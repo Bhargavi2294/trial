@@ -3,7 +3,7 @@ from utils.quality_utils import check_image_quality
 from utils.cert_utils import required_certifications
 
 st.set_page_config(page_title="PCB Check & Certification", layout="centered")
-st.title("✅ PCB Quality & Certification Assistant")
+st.title(" PCB Quality & Certification Assistant")
 
 option = st.selectbox(
     "Choose what you'd like to do:",
