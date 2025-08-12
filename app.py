@@ -74,4 +74,4 @@ else:
     st.info("Please upload a PCB image to start the analysis.")
 
 st.markdown("---")
-st.caption("Developed for Mefron by your PCB analysis assistant.")
+st.caption("Developed for PCB analysis ")
