@@ -1,51 +1,77 @@
+# app.py
+
 import streamlit as st
-from utils.quality_utils import check_image_quality
-from utils.cert_utils import required_certifications
+from PIL import Image
+import io
+import os
+from analyze_pcb import analyze_pcb_image
 
-st.set_page_config(page_title="PCB Check & Certification", layout="centered")
-st.title(" PCB Quality & Certification Assistant")
+# Check if the data directory exists, if not run setup
+if not os.path.exists('data'):
+    import setup
+    setup.create_directory_structure()
+    setup.create_sample_dataset()
+    setup.create_dummy_images()
+    setup.create_dummy_models()
 
-option = st.selectbox(
-    "Choose what you'd like to do:",
-    ["Select", "1. Quality + Certification", "2. Quality Check Only", "3. Certification Required Only"]
+# --- Streamlit Application Layout ---
+st.set_page_config(
+    page_title="PCB Analysis Tool",
+    page_icon="",
+    layout="centered"
 )
 
-uploaded = st.file_uploader("Upload PCB Image (PNG/JPG)", type=["png", "jpg", "jpeg"])
-pcb_name = st.text_input("Enter PCB Name")
+st.title("PCB Analysis Tool")
+st.markdown("Upload a PCB image and select the analysis type.")
 
-if option != "Select":
-    if not pcb_name:
-        st.warning("Please enter the PCB Name.")
-        st.stop()
-    if (option != "3. Certification Required Only") and not uploaded:
-        st.warning("Please upload a PCB image for quality checks.")
-        st.stop()
+st.sidebar.header("Analysis Options")
+analysis_option = st.sidebar.radio(
+    "Choose analysis type:",
+    options=[
+        "1. Check Certification & Quality Check",
+        "2. Quality Check Required",
+        "3. Certification Needed"
+    ],
+    index=0 # Default to the first option
+)
 
-    # Do quality check if needed
-    quality_results = None
-    if option in ["1. Quality + Certification", "2. Quality Check Only"]:
-        img, quality_results = check_image_quality(uploaded)
-        st.image(img, caption="PCB Image Preview", use_column_width=True)
-        st.markdown("### 🛠 Quality Check Results:")
-        st.write(f"- **Format:** {quality_results['format']}")
-        st.write(f"- **Resolution:** {quality_results['width']}×{quality_results['height']}")
-        st.write(f"- **Aspect Ratio:** {quality_results['aspect_ratio']}")
-        st.write(f"- **File Size:** {quality_results['size_kb']} KB")
-        if quality_results['warnings']:
-            st.warning("⚠️ Warnings:\n" + "\n".join(["• " + w for w in quality_results['warnings']]))
-        else:
-            st.success("✅ Basic quality checks passed.")
+# Convert string option to integer for the function
+if "1." in analysis_option:
+    selected_option_int = 1
+elif "2." in analysis_option:
+    selected_option_int = 2
+elif "3." in analysis_option:
+    selected_option_int = 3
+else:
+    selected_option_int = 0 # Fallback
 
-    # Do certification if needed
-    if option in ["1. Quality + Certification", "3. Certification Required Only"]:
-        certs = required_certifications(pcb_name)
-        st.markdown("### 📋 Required Certifications:")
-        for c in certs:
-            st.write(f"- {c}")
+uploaded_file = st.file_uploader("Choose a PCB image...", type=["jpg", "jpeg", "png", "bmp"])
 
-    # Summary
-    st.markdown("---")
-    st.markdown("### 🔍 Summary")
-    if quality_results:
-        st.write(f"Quality: {'PASS' if not quality_results['warnings'] else 'ISSUES'}")
-    st.write(f"Certifications Needed: {', '.join(certs)}")
+if uploaded_file is not None:
+    # Display the uploaded image
+    st.subheader("Uploaded PCB Image:")
+    image_bytes = uploaded_file.getvalue()
+    st.image(image_bytes, caption=uploaded_file.name, use_column_width=True)
+
+    st.subheader("Analysis Results:")
+    with st.spinner("Analyzing PCB image..."):
+        # Perform analysis using the analyze_pcb_image function
+        results = analyze_pcb_image(image_bytes, selected_option_int)
+
+        if selected_option_int == 1:
+            st.write(f"**Quality Check Required:** {results['quality_check_required']}")
+            st.write(f"**Certification Needed:** {results['certification_needed']}")
+        elif selected_option_int == 2:
+            st.write(f"**Quality Check Required:** {results['quality_check_required']}")
+        elif selected_option_int == 3:
+            st.write(f"**Certification Needed:** {results['certification_needed']}")
+
+        st.markdown(f"---")
+        st.write(f"**Details:**")
+        st.info(results['details'])
+
+else:
+    st.info("Please upload a PCB image to start the analysis.")
+
+st.markdown("---")
+st.caption("Developed for Mefron by your PCB analysis assistant.")
